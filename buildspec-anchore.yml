@@ -26,15 +26,15 @@ phases:
     commands:
       - echo "inside build stage"
       - cd $CODEBUILD_SRC_DIR
-      - docker build -t $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION docker_files/.
-      - curl -s https://ci-tools.anchore.io/inline_scan-v0.6.0 | bash -s -- -r $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION 
-      - TAG="$CODEBUILD_RESOLVED_SOURCE_VERSION"
-      - docker tag $IMAGE_REPO_NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION $REPOSITORY_URI:latest
-      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - docker build -t $IMAGE_REPO_NAME:$RESOLVED_SOURCE_VERSION docker_files/.
+      - curl -s https://ci-tools.anchore.io/inline_scan-v0.6.0 | bash -s -- -r $IMAGE_REPO_NAME:$RESOLVED_SOURCE_VERSION 
+      - TAG="$RESOLVED_SOURCE_VERSION"
+      - docker tag $IMAGE_REPO_NAME:$RESOLVED_SOURCE_VERSION $REPOSITORY_URI:latest
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $DOCKER_INFO
   post_build:
     commands:
       - |
-        jq "{ \"messageType\": \"CodeScanReport\", \"reportType\": \"ANCHORE\", \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \"source_repository\": \"$CODEBUILD_SOURCE_REPO_URL\", \"source_branch\": \"$CODEBUILD_SOURCE_VERSION\", \"build_id\": \"$CODEBUILD_BUILD_ID\", \"source_commitid\": \"$CODEBUILD_RESOLVED_SOURCE_VERSION\", \"report\": . }" anchore-reports/devsecops-demo_*-vuln.json > payload.json
+        jq "{ \"messageType\": \"CodeScanReport\", \"reportType\": \"ANCHORE\", \"createdAt\": $(date +\"%Y-%m-%dT%H:%M:%S.%3NZ\"), \"source_repository\": \"$CODEBUILD_SOURCE_REPO_URL\", \"source_branch\": \"$CODEBUILD_SOURCE_VERSION\", \"build_id\": \"$CODEBUILD_BUILD_ID\", \"source_commitid\": \"$RESOLVED_SOURCE_VERSION\", \"report\": . }" anchore-reports/devsecops-demo_*-vuln.json > payload.json
       - echo ""
       - |
         if (grep -E 'High|Critical' payload.json); then 
